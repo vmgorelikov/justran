@@ -1,3 +1,8 @@
+# секреты
+.env
+src/secrets_.py
+**/secret*
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]

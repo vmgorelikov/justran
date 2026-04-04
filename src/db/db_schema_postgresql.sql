@@ -1,6 +1,8 @@
+-- DROP TABLE IF EXISTS "users", "translations", "translation_patches";
+
 CREATE TABLE "users" (
   "id" INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  "username" varchar(32) NOT NULL,
+  "username" varchar(32) NOT NULL UNIQUE,
   "display_name" varchar(160),
   "password_hash" text NOT NULL,
   "created_at" timestamp NOT NULL
@@ -8,14 +10,15 @@ CREATE TABLE "users" (
 
 CREATE TABLE "translations" (
   "id" INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  "initated_by" integer NOT NULL,
+  "initiated_by" integer NOT NULL,
+  "source_text" text NOT NULL,
   "full_text" text NOT NULL,
   "properties" text, 
   "previous" integer,
   "created_at" timestamp NOT NULL,
   
   CONSTRAINT fk_initiated_by
-    FOREIGN KEY ("initated_by")
+    FOREIGN KEY ("initiated_by")
     REFERENCES "users" ("id")
     ON DELETE NO ACTION -- для разбирательств
 );

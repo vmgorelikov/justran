@@ -17,12 +17,7 @@ CREATE TABLE "translations" (
   CONSTRAINT fk_initiated_by
     FOREIGN KEY ("initated_by")
     REFERENCES "users" ("id")
-    ON DELETE NO ACTION, -- для разбирательств
-
-  CONSTRAINT fk_previous_for_translation
-    FOREIGN KEY ("previous")
-    REFERENCES "translation_patches" ("id")
-    ON DELETE SET NULL -- ну не будет истории — и не будет
+    ON DELETE NO ACTION -- для разбирательств
 );
 
 CREATE TABLE "translation_patches" (
@@ -35,12 +30,18 @@ CREATE TABLE "translation_patches" (
   CONSTRAINT fk_for_translation
     FOREIGN KEY ("for_translation")
     REFERENCES "translations" ("id")
-    ON DELETE CASCADE, -- а вот хранить orphaned относительно перевода 
+    ON DELETE CASCADE -- а вот хранить orphaned относительно перевода 
     -- патчи нам не надо
-
-  CONSTRAINT fk_previous_for_patch
-    FOREIGN KEY ("previous")
-    REFERENCES "translation_patches" ("id")
-    ON DELETE SET NULL -- то, что где-то там удалился патч, не должно -- нам мешать
 );
 
+ALTER TABLE "translations"
+  ADD CONSTRAINT fk_previous_for_translation
+    FOREIGN KEY ("previous")
+    REFERENCES "translation_patches" ("id")
+    ON DELETE SET NULL; -- ну не будет истории — и не будет
+
+ALTER TABLE "translation_patches"
+  ADD CONSTRAINT fk_previous_for_patch
+    FOREIGN KEY ("previous")
+    REFERENCES "translation_patches" ("id")
+    ON DELETE SET NULL; -- то, что где-то там удалился патч, не должно -- нам мешать

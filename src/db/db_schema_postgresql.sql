@@ -5,7 +5,7 @@ CREATE TABLE "users" (
   "username" varchar(32) NOT NULL UNIQUE,
   "display_name" varchar(160),
   "password_hash" text NOT NULL,
-  "created_at" timestamp NOT NULL
+  "created_at" timestamp with time zone NOT NULL
 );
 
 CREATE TABLE "translations" (
@@ -15,7 +15,7 @@ CREATE TABLE "translations" (
   "full_text" text NOT NULL,
   "properties" text, 
   "previous" integer,
-  "created_at" timestamp NOT NULL,
+  "created_at" timestamp with time zone NOT NULL,
   
   CONSTRAINT fk_initiated_by
     FOREIGN KEY ("initiated_by")
@@ -28,7 +28,7 @@ CREATE TABLE "translation_patches" (
   "for_translation" integer NOT NULL,
   "delta" text NOT NULL,
   "previous" integer,
-  "created_at" timestamp NOT NULL,
+  "created_at" timestamp with time zone NOT NULL,
 
   CONSTRAINT fk_for_translation
     FOREIGN KEY ("for_translation")

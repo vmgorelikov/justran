@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+<body>
+  <select id="method">
+    <option>POST</option>
+    <option>GET</option>
+    <option>PUT</option>
+    <option>DELETE</option>
+  </select>
+  <input id="url" type="text" value="/api/v1/"><br><br>
+  <textarea id="body" placeholder="Body (for POST/PUT)"></textarea><br>
+  <button onclick="send()">Send Request</button>
+  <pre id="out"></pre>
+
+  <script>
+    async function send() {
+      const method = document.getElementById('method').value;
+      const options = { method };
+      
+      if (method !== 'GET' && method !== 'HEAD') {
+        options.headers = { 'Content-Type': 'application/json' };
+        options.body = document.getElementById('body').value;
+      }
+
+      try {
+        const res = await fetch(document.getElementById('url').value, options);
+        document.getElementById('out').innerText = await res.text();
+      } catch (err) {
+        document.getElementById('out').innerText = "Error: " + err.message;
+      }
+    }
+  </script>
+</body>
+</html>

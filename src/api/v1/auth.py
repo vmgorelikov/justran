@@ -9,7 +9,8 @@ from db.models import Token
 from auth import get_token, AuthInvalidCredentialsException
 
 router = APIRouter()
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl='/auth/token')
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl='/auth/token',
+                                     auto_error=False)
 
 @router.post('/token', status_code=200, response_model=Token)
 async def give_token(user: Annotated[
@@ -24,6 +25,6 @@ async def give_token(user: Annotated[
     except AuthInvalidCredentialsException as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail='Incorrect username or password',
+            detail={"error": "invalid_credentials"},
             headers={'WWW-Authenticate': 'Bearer'},
         ) from e

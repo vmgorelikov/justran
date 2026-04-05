@@ -146,7 +146,9 @@ class TranslationProcessor:
         max_chunk_size: int = 2000,
         prompt_template: str = PromptTemplates.TRANSLATE_TESTING,
         max_retries: int = 2,
-        min_alternatives: int = 1
+        min_alternatives: int = 1,
+        *,
+        text: str | None
     ):
         """
         Инициализирует процессор перевода.
@@ -162,9 +164,21 @@ class TranslationProcessor:
         self.prompt_template = prompt_template
         self._chunks: List[Chunk] = []
         self._current_index = 0
-        self._results: List[TranslationChunk] = []
+        self.results: List[TranslationChunk] = []
         self.max_retries = max_retries
         self.min_alternatives = min_alternatives
+        
+        if type(text) is str:
+            self.chunk(text)
+
+    def chunk(self, text: str) -> 'TranslationProcessor':
+        '''
+        Делит текст на чанки и сохраняет их для перевода.
+        '''
+        if not text:
+            raise ValueError("Text cannot be empty")
+        self._chunks = self.chunker.split(text, self.max_chunk_size)
+        return self
 
     def _parse_synonyms_markers(self, text: str) -> Tuple[str, List[Dict]]:
         """
@@ -306,7 +320,7 @@ class TranslationProcessor:
             TranslationProcessor: Ссылка на себя для использования в итерации
         """
         self._current_index = 0
-        self._results = []
+        self.results: list[TranslationChunk] = []
         return self
     
     def __next__(self) -> TranslationChunk:
@@ -359,7 +373,7 @@ class TranslationProcessor:
             index=chunk.index,
             alternatives=alts
         )
-        self._results.append(result)
+        self.results.append(result)
         self._current_index += 1
         
         return result

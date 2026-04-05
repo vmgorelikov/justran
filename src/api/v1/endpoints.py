@@ -1,71 +1,40 @@
-import os
-from datetime import datetime, timedelta, timezone
-
-import jwt
-from argon2 import PasswordHasher
-from argon2.exceptions import InvalidHashError, VerifyMismatchError
-from fastapi import APIRouter, Request, status
-from fastapi.responses import JSONResponse
-from sqlmodel import Field, Session, SQLModel, select
+from fastapi import APIRouter, Depends, HTTPException, status
 from time import time
 
-from db.models import UserCredentials
-from db.models import Token, User as UserTable
-from db import engine
+from api.v1.auth import oauth2_scheme 
+from db.models import User
+import auth
+    
+token_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail='Could not validate credentials',
+        headers={'WWW-Authenticate': 'Bearer'},
+    )
 
-
-_jwt_secret = os.getenv("JWT_SECRET")
-_jwt_alg = "HS256"
+def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
+    try:
+        return auth.get_current_user(token)
+    except auth.AuthInvalidTokenException as e:
+        raise token_exception from e
 
 router = APIRouter()
 
-
-def _client_ip(request: Request) -> str:
-    forwarded = request.headers.get("x-forwarded-for")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
-    if request.client:
-        return request.client.host
-    return ""
-
-
-@router.get('/time', status_code=status.HTTP_200_OK)
+@router.get('/time', status_code=200)
 async def test_method():
-    '''Возвращает текущее время на сервере.'''
+    '''
+    Возвращает текущее время на сервере.
+    '''
     return {'time': time()}
 
 
-@router.post('/token', status_code=200, response_model=Token)
-async def give_token(user: UserCredentials, request: Request):
-    with Session(engine) as session:
-        db_user = session.exec(
-            select(UserTable).where(UserTable.username == user.username)
-        ).first()
-    if db_user is None:
-        return JSONResponse(
-            status_code=400,
-            content={
-                "error": "invalid_grant",
-                "error_description": "Invalid username or password.",
-            },
-        )
-    try:
-        PasswordHasher().verify(db_user.password_hash, user.password)
-    except (VerifyMismatchError, InvalidHashError):
-        return JSONResponse(
-            status_code=400,
-            content={
-                "error": "invalid_grant",
-                "error_description": "Invalid username or password.",
-            },
-        )
-    now = datetime.now(timezone.utc)
-    exp = now + timedelta(days=30)
-    ip = _client_ip(request)
-    payload = {
-        "iat": int(now.timestamp()),
-        "exp": int(exp.timestamp()),
-        "ip": ip,
-    }
-    token = jwt.encode(payload, _jwt_secret, algorithm=_jwt_alg)
-    return {"token": token}
+@router.get('/time_with_auth', status_code=200,
+            dependencies=[Depends(get_current_user)])
+async def test_method_with_auth():
+    '''
+    Возвращает текущее время на сервере, требует авторизации.
+    '''
+    return {'time': time()}
+
+@router.post('/translations/new', status_code=200)
+async def translate(user: User = Depends(get_current_user)) -> None:
+    return

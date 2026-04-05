@@ -3,6 +3,21 @@ from sqlmodel import Field, SQLModel
 
 
 class User(SQLModel, table=True):
+    '''
+    Пользователь.
+
+    :vartype id: int
+    :vartype username: str
+    :vartype display_name: str
+    :vartype password_hash: str
+    :vartype created_at: datetime.datetime
+
+    :var id: ID, возрастающий.
+    :var username: Логин до 32 символов из `[A-Za-z0-9_\\-.]`.
+    :var display_name: Отображаемое имя до 160 любых символов.
+    :var password_hash: Argon2 хэш пароля.
+    :var created_at: Дата и время регистрации пользователя.
+    '''
     __tablename__ = 'users'
 
     id: int | None = Field(default=None, primary_key=True)
@@ -19,8 +34,8 @@ class Translation(SQLModel, table=True):
 
     id: int | None = Field(default=None, primary_key=True)
     initiated_by: int = Field(foreign_key ='users.id')
-    source_text: str
-    full_text: str
+    original: str
+    translated: str
     properties: str | None = None
     previous: int | None = Field(default=None,
                                  foreign_key='translation_patches.id')

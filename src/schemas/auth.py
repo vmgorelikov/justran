@@ -12,6 +12,9 @@ class UserCredentials(SQLModel, table=False):
     '''
     Пара логин:пароль пользователя.
 
+    :vartype username: str
+    :vartype password: str
+
     :var username: Логин до 32 символов из `[A-Za-z0-9_\-.]`.
     :var password: Пароль в явном виде.
     '''
@@ -21,6 +24,10 @@ class UserCredentials(SQLModel, table=False):
 class Token(SQLModel, table=False):
     '''
     Токен для доступа к API.
+
+    :vartype access_token: str
+    :vartype token_type: str
+
     :var access_token: Токен.
     :var token_type: Тип токена (всегда Bearer).
     '''
@@ -30,6 +37,10 @@ class Token(SQLModel, table=False):
 class AuthError(SQLModel, table=False):
     '''
     Ошибка авторизации.
+
+    :vartype error: str
+    :vartype error_description: str
+
     :var error: Код ошибки:
     * `invalid_token` — токен осутствует, истёк, принадлежит
     удалённому пользователю или просто неверный.

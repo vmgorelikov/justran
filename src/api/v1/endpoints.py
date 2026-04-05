@@ -1,3 +1,13 @@
+'''
+Эндпоинты и многое прочее, что связано с HTTP, для API v1.
+
+.. WARNING::
+   Этот модуль не должно быть нужно импортировать откуда-либо, кроме
+   `main.py` или другого модуля, создающего `fastapi.FastAPI`.
+
+Authors: В. М. Гореликов <vmgorelikov@edu.hse.ru>
+'''
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from time import time
 
@@ -34,4 +44,5 @@ async def test_method() -> dict[str, int]:
 
 @router.post('/translations/new', status_code=200)
 async def translate(user: User = Depends(get_current_user)) -> None:
+    
     return

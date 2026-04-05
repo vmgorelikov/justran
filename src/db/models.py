@@ -1,5 +1,6 @@
 from datetime import datetime, UTC
 from sqlmodel import Field, SQLModel
+from typing import Literal
 
 
 class User(SQLModel, table=True):
@@ -7,7 +8,7 @@ class User(SQLModel, table=True):
 
     id: int | None = Field(default=None, primary_key=True)
     username: str = Field(max_length=32, unique=True,
-                          regex='[A-Za-z0-9_-@.]+')
+                          regex=r'[A-Za-z0-9_\-.]+')
     display_name: str | None = Field(default=None, max_length=160)
     password_hash: str
     created_at: datetime = Field(default_factory=
@@ -19,7 +20,7 @@ class UserCredentials(SQLModel, table=False):
 
 class Token(SQLModel):
     access_token: str
-    token_type: str
+    token_type: Literal['bearer']
 
 
 class Translation(SQLModel, table=True):

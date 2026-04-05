@@ -65,7 +65,7 @@ def get_token(user: OAuth2PasswordRequestForm) -> Token:
         error('Wrong password')
         raise AuthInvalidCredentialsException from e
 
-    exp = datetime.now(timezone.utc) + timedelta(days=30)
+    exp = datetime.now(timezone.utc) + timedelta(minutes=10)
     payload = {
         'sub': db_user.username,
         'exp': int(exp.timestamp())

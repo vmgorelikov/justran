@@ -1,5 +1,6 @@
 from datetime import datetime, UTC
-from sqlmodel import Field, SQLModel
+from typing import Optional
+from sqlmodel import Field, Relationship, SQLModel
 
 
 class User(SQLModel, table=True):
@@ -27,23 +28,31 @@ class User(SQLModel, table=True):
     password_hash: str
     created_at: datetime = Field(default_factory=
                                  lambda: datetime.now(UTC))
+    
+    translations: list['Translation'] =\
+        Relationship(back_populates="initiator")
 
 
 class Translation(SQLModel, table=True):
     __tablename__ = 'translations'
 
-    id: int | None = Field(default=None, primary_key=True)
+    id: Optional[int] = Field(default=None, primary_key=True)
     initiated_by: int = Field(foreign_key ='users.id')
     original: str
-    translated: str
+    translated: Optional[str]
     properties: str | None = None
     previous: int | None = Field(default=None,
                                  foreign_key='translation_patches.id')
     created_at: datetime = Field(default_factory=
                                  lambda: datetime.now(UTC))
+    
+    initiator: User = Relationship(back_populates="translations")
 
 
 class TranslationPatch(SQLModel, table=True):
+    '''
+    Не используется.
+    '''
     __tablename__ = 'translation_patches'
 
     id: int | None = Field(default=None, primary_key=True)

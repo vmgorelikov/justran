@@ -3,7 +3,7 @@ from typing import Any, Dict, Literal, Optional
 from sqlmodel import Field, SQLModel
 from pydantic import RootModel
 
-class SourceText(SQLModel):
+class Original(SQLModel):
     '''
     Представление текста, получаемого от клиента.
     '''

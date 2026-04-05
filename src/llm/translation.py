@@ -1,18 +1,17 @@
 """
-Пробный модуль для перевода текста 
+Модуль перевода текста с интеграцией LangChain
 
 Предоставляет классы для разбиения текста на чанки и перевода
-с использованием локальной модели Ollama
+с использованием LangChain моделей (Ollama и др.)
 
 Автор: Саша Жигулина <aazhigulina@edu.hse.ru>
 """
 
-import json
 import re
-from dataclasses import dataclass
-from typing import List, Optional, Iterator
-from urllib import request
-from urllib.error import URLError
+from dataclasses import dataclass, field
+from typing import List, Dict, Tuple, Any
+from langchain_core.language_models.chat_models import BaseChatModel
+from prompt_constructor import PromptTemplates
 
 
 @dataclass
@@ -30,6 +29,7 @@ class TranslationChunk:
     original: str
     translated: str
     index: int
+    alternatives: List[Dict] = field(default_factory=list)
 
 
 @dataclass
@@ -38,66 +38,7 @@ class TranslationResult:
     original: str
     translated: str
     chunks: List[TranslationChunk]
-
-
-class PromptTemplates:
-    """Шаблоны промптов для модели"""
-    
-    TRANSLATE = """Translate the following text from Russian to English. 
-                    Return only the translation, no explanations.
-
-                    Text: {text}
-
-                    Translation:"""
-
-
-class OllamaClient:
-    """Клиент для работы с Ollama API"""
-    
-    def __init__(self, model: str = "llama2", host: str = "http://localhost:11434"):
-        """
-        Инициализирует клиент Ollama.
-        
-        Args:
-            model: Название модели в Ollama
-            host: URL сервера Ollama
-        """
-        self.model = model
-        self.host = host
-    
-    def generate(self, prompt: str) -> str:
-        """
-        Отправляет промпт модели и получает ответ.
-        
-        Args:
-            prompt: Текст промпта для модели
-            
-        Returns:
-            str: Сгенерированный ответ модели
-            
-        Raises:
-            RuntimeError: Если не удалось подключиться к Ollama или произошла ошибка
-        """
-        url = f"{self.host}/api/generate"
-        
-        payload = {
-            "model": self.model,
-            "prompt": prompt,
-            "stream": False
-        }
-        
-        req = request.Request(
-            url,
-            data=json.dumps(payload).encode('utf-8'),
-            headers={'Content-Type': 'application/json'}
-        )
-        
-        try:
-            with request.urlopen(req) as response:
-                result = json.loads(response.read().decode('utf-8'))
-                return result.get('response', '').strip()
-        except URLError as e:
-            raise RuntimeError(f"Failed to connect to Ollama: {e}")
+    global_alternatives: List[Dict[str, Any]] = field(default_factory=list)
 
 
 class TextChunker:
@@ -147,11 +88,8 @@ class TextChunker:
     
     def split(self, text: str, max_tokens: int) -> List[Chunk]:
         """
-        Разбивает текст на чанки.
-        
-        Приоритет разбиения:
-        1. По предложениям (по точкам, вопросительным и восклицательным знакам)
-        2. Если предложение длиннее max_tokens, оно будет разбито принудительно
+        Разбивает текст на чанки по предложениям 
+        (по точкам, вопросительным и восклицательным знакам)
         
         Args:
             text: Исходный текст для разбиения
@@ -203,9 +141,12 @@ class TranslationProcessor:
     
     def __init__(
         self,
-        model_client: OllamaClient,
+        model_client: BaseChatModel,
         chunker: TextChunker,
-        max_chunk_size: int = 2000
+        max_chunk_size: int = 2000,
+        prompt_template: str = PromptTemplates.TRANSLATE_TESTING,
+        max_retries: int = 2,
+        min_alternatives: int = 1
     ):
         """
         Инициализирует процессор перевода.
@@ -218,9 +159,144 @@ class TranslationProcessor:
         self.model = model_client
         self.chunker = chunker
         self.max_chunk_size = max_chunk_size
+        self.prompt_template = prompt_template
         self._chunks: List[Chunk] = []
         self._current_index = 0
         self._results: List[TranslationChunk] = []
+        self.max_retries = max_retries
+        self.min_alternatives = min_alternatives
+
+    def _parse_synonyms_markers(self, text: str) -> Tuple[str, List[Dict]]:
+        """
+        Извлекает альтернативы из маркеров /start/.../end/, где маркеры находятся
+        после основного перевода и содержат русский оригинал и английские варианты.
+        
+        Формат блока с альтернативами:
+        /start/русский_оригинал | английский_вариант1 | английский_вариант2 | ... /end/
+        
+        Returns:
+            (очищенный_текст_перевода, список_альтернатив)
+        """
+        # Поиск первого маркера
+        first_marker = re.search(r'/start/', text)
+        if not first_marker:
+            return text, []
+        
+        # Отделяем основной перевод от блока с альтернативами
+        cleaned = text[:first_marker.start()].strip()
+        alternatives_block = text[first_marker.start():]
+        
+        # Извлекаем все пары из блока альтернатив
+        pairs = []
+        pattern = r'/start/(.*?)/end/'
+        
+        for match in re.finditer(pattern, alternatives_block, re.DOTALL):
+            parts = [p.strip() for p in match.group(1).split('|')]
+            if len(parts) < 2:
+                continue
+            
+            pairs.append({
+                'russian_original': parts[0],
+                'english_variants': parts[1:],
+                'selected': 0
+            })
+        
+        # Ищем позиции вариантов в тексте перевода (с учётом регистра)
+        alternatives = []
+        current_pos = 0
+        cleaned_lower = cleaned.lower()
+        
+        for pair in pairs:
+            target = pair['english_variants'][0]
+            target_lower = target.lower()
+            pos = cleaned_lower.find(target_lower, current_pos)
+            
+            if pos != -1:
+                # Находим оригинальный спан с сохранением регистра
+                original_span = cleaned[pos:pos + len(target)]
+                alternatives.append({
+                    "start": pos,
+                    "end": pos + len(target),
+                    "options": pair['english_variants'],
+                    "selected": 0,
+                    "russian_original": pair['russian_original']
+                })
+                current_pos = pos + len(target)
+        
+        return cleaned, alternatives
+    
+    def _add_retry_hint(self, text: str, attempt: int) -> str:
+        """
+        Добавляет инструкцию для модели при повторной попытке.
+        """
+        hint = f"\n\n[Instruction: Previous attempt had no synonyms marked. \
+            Please mark at least one word with /start/русское слово|translation1|translation2|translation3/end/ format.]"
+        return text + hint
+    
+    def process_full(self, text: str) -> TranslationResult:
+        """
+        Выполняет полный перевод текста.
+        
+        Args:
+            text: Исходный текст для перевода
+            
+        Returns:
+            TranslationResult: Объект с полным переводом и чанками
+            
+        Raises:
+            ValueError: Если текст пустой
+            RuntimeError: Если произошла ошибка при переводе
+        """
+        if not text:
+            raise ValueError("Text cannot be empty")
+        
+        # Разбиваем на чанки
+        self._chunks = self.chunker.split(text, self.max_chunk_size)
+        
+        # Переводим все чанки
+        results = []
+        global_alternatives = []
+        for chunk in self._chunks:
+            text_to_translate = chunk.text
+            if chunk.overlap:
+                text_to_translate = f"(Context from previous part: {chunk.overlap})\n\n{chunk.text}"
+            
+            for attempt in range(self.max_retries + 1):
+                prompt = self.prompt_template.format(text=text_to_translate)
+                response = self.model.invoke(prompt)
+                raw_translated = response.content if hasattr(response, 'content') else str(response)
+                cleaned, alts = self._parse_synonyms_markers(raw_translated)
+                
+                if len(alts) >= self.min_alternatives:
+                    break
+                
+                # если не последняя попытка, добавляет подсказку в следующий промпт
+                if attempt < self.max_retries:
+                    text_to_translate = self._add_retry_hint(text_to_translate, attempt)
+
+            # Корректировка позиций с учётом смещения от предыдущих чанков
+            current_offset = len(' '.join(r.translated for r in results)) + (1 if results else 0)
+            for alt in alts:
+                alt['start'] += current_offset
+                alt['end'] += current_offset
+            global_alternatives.extend(alts)
+            
+            results.append(TranslationChunk(
+                original=chunk.text,
+                translated=cleaned,
+                index=chunk.index,
+                alternatives=alts
+            ))
+        
+        # Собираем полный перевод
+        full_translation = ' '.join(r.translated for r in sorted(results, key=lambda x: x.index))
+        
+        return TranslationResult(
+            original=text,
+            translated=full_translation,
+            chunks=results,
+            global_alternatives=global_alternatives
+        )
     
     def __iter__(self) -> "TranslationProcessor":
         """
@@ -257,65 +333,33 @@ class TranslationProcessor:
         if chunk.overlap:
             text_to_translate = f"(Context from previous part: {chunk.overlap})\n\n{chunk.text}"
         
-        prompt = PromptTemplates.TRANSLATE.format(text=text_to_translate)
+        prompt = self.prompt_template.format(text=text_to_translate)
         
         try:
-            translated = self.model.generate(prompt)
+            for attempt in range(self.max_retries + 1):
+                prompt = self.prompt_template.format(text=text_to_translate)
+                response = self.model.invoke(prompt)
+                raw_translated = response.content if hasattr(response, 'content') else str(response)
+                cleaned, alts = self._parse_synonyms_markers(raw_translated)
+                
+                if len(alts) >= self.min_alternatives:
+                    break
+                
+                # если не последняя попытка, добавляет подсказку в следующий промпт
+                if attempt < self.max_retries:
+                    text_to_translate = self._add_retry_hint(text_to_translate, attempt)
+
         except Exception as e:
             raise RuntimeError(f"Translation failed for chunk {chunk.index}: {e}")
         
         # Сохраняем результат
         result = TranslationChunk(
             original=chunk.text,
-            translated=translated,
-            index=chunk.index
+            translated=cleaned,
+            index=chunk.index,
+            alternatives=alts
         )
         self._results.append(result)
         self._current_index += 1
         
         return result
-    
-    def process_full(self, text: str) -> TranslationResult:
-        """
-        Выполняет полный перевод текста.
-        
-        Args:
-            text: Исходный текст для перевода
-            
-        Returns:
-            TranslationResult: Объект с полным переводом и чанками
-            
-        Raises:
-            ValueError: Если текст пустой
-            RuntimeError: Если произошла ошибка при переводе
-        """
-        if not text:
-            raise ValueError("Text cannot be empty")
-        
-        # Разбиваем на чанки
-        self._chunks = self.chunker.split(text, self.max_chunk_size)
-        
-        # Переводим все чанки
-        results = []
-        for chunk in self._chunks:
-            text_to_translate = chunk.text
-            if chunk.overlap:
-                text_to_translate = f"(Context from previous part: {chunk.overlap})\n\n{chunk.text}"
-            
-            prompt = PromptTemplates.TRANSLATE.format(text=text_to_translate)
-            translated = self.model.generate(prompt)
-            
-            results.append(TranslationChunk(
-                original=chunk.text,
-                translated=translated,
-                index=chunk.index
-            ))
-        
-        # Собираем полный перевод
-        full_translation = ' '.join(r.translated for r in sorted(results, key=lambda x: x.index))
-        
-        return TranslationResult(
-            original=text,
-            translated=full_translation,
-            chunks=results
-        )

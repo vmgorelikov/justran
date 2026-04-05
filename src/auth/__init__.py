@@ -10,8 +10,8 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlmodel import Session, select
 from time import time
 
-from db.models import User
-from auth.models import Token
+from models.service_db import User
+from schemas.auth import Token
 from db import engine
 
 _jwt_secret = os.getenv('JWT_SECRET')

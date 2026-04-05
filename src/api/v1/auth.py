@@ -4,8 +4,8 @@ from logging import info, warning, error
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 
-from auth.models import Token
-from auth.models import AuthError
+from schemas.auth import Token
+from schemas.auth import AuthError
 
 from auth import get_token, AuthInvalidCredentialsException
 

@@ -2,9 +2,9 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from time import time
 
 from api.v1.auth import oauth2_scheme 
-from db.models import User
+from models.service_db import User
 import auth
-from auth.models import AuthError
+from schemas.auth import AuthError
     
 token_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,

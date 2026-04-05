@@ -13,6 +13,14 @@ from typing import List, Dict, Tuple, Any
 from langchain_core.language_models.chat_models import BaseChatModel
 from prompt_constructor import PromptTemplates
 
+@dataclass
+class Alternative:
+    'Ака синонимы.'
+    start: int
+    end: int
+    options: list[str]
+    selected: int
+    russian_original: str
 
 @dataclass
 class Chunk:
@@ -228,13 +236,13 @@ class TranslationProcessor:
             if pos != -1:
                 # Находим оригинальный спан с сохранением регистра
                 original_span = cleaned[pos:pos + len(target)]
-                alternatives.append({
+                alternatives.append(Alternative(**{
                     "start": pos,
                     "end": pos + len(target),
                     "options": pair['english_variants'],
                     "selected": 0,
                     "russian_original": pair['russian_original']
-                })
+                }))
                 current_pos = pos + len(target)
         
         return cleaned, alternatives

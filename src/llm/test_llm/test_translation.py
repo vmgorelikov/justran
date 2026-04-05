@@ -1,16 +1,18 @@
 """
-Модуль перевода текста с интеграцией LangChain
+Пробный модуль для перевода текста 
 
 Предоставляет классы для разбиения текста на чанки и перевода
-с использованием LangChain моделей (Ollama и др.)
+с использованием локальной модели Ollama
 
 Автор: Саша Жигулина <aazhigulina@edu.hse.ru>
 """
 
+import json
 import re
 from dataclasses import dataclass
-from typing import List
-from langchain_core.language_models.chat_models import BaseChatModel
+from typing import List, Optional, Iterator
+from urllib import request
+from urllib.error import URLError
 
 
 @dataclass
@@ -47,6 +49,55 @@ class PromptTemplates:
                     Text: {text}
 
                     Translation:"""
+
+
+class OllamaClient:
+    """Клиент для работы с Ollama API"""
+    
+    def __init__(self, model: str = "llama2", host: str = "http://localhost:11434"):
+        """
+        Инициализирует клиент Ollama.
+        
+        Args:
+            model: Название модели в Ollama
+            host: URL сервера Ollama
+        """
+        self.model = model
+        self.host = host
+    
+    def generate(self, prompt: str) -> str:
+        """
+        Отправляет промпт модели и получает ответ.
+        
+        Args:
+            prompt: Текст промпта для модели
+            
+        Returns:
+            str: Сгенерированный ответ модели
+            
+        Raises:
+            RuntimeError: Если не удалось подключиться к Ollama или произошла ошибка
+        """
+        url = f"{self.host}/api/generate"
+        
+        payload = {
+            "model": self.model,
+            "prompt": prompt,
+            "stream": False
+        }
+        
+        req = request.Request(
+            url,
+            data=json.dumps(payload).encode('utf-8'),
+            headers={'Content-Type': 'application/json'}
+        )
+        
+        try:
+            with request.urlopen(req) as response:
+                result = json.loads(response.read().decode('utf-8'))
+                return result.get('response', '').strip()
+        except URLError as e:
+            raise RuntimeError(f"Failed to connect to Ollama: {e}")
 
 
 class TextChunker:
@@ -96,8 +147,11 @@ class TextChunker:
     
     def split(self, text: str, max_tokens: int) -> List[Chunk]:
         """
-        Разбивает текст на чанки по предложениям 
-        (по точкам, вопросительным и восклицательным знакам)
+        Разбивает текст на чанки.
+        
+        Приоритет разбиения:
+        1. По предложениям (по точкам, вопросительным и восклицательным знакам)
+        2. Если предложение длиннее max_tokens, оно будет разбито принудительно
         
         Args:
             text: Исходный текст для разбиения
@@ -149,7 +203,7 @@ class TranslationProcessor:
     
     def __init__(
         self,
-        model_client: BaseChatModel,
+        model_client: OllamaClient,
         chunker: TextChunker,
         max_chunk_size: int = 2000
     ):
@@ -206,11 +260,7 @@ class TranslationProcessor:
         prompt = PromptTemplates.TRANSLATE.format(text=text_to_translate)
         
         try:
-            response = self.model.invoke(prompt)
-            if hasattr(response, 'content'):
-                translated = response.content
-            else:
-                translated = str(response)
+            translated = self.model.generate(prompt)
         except Exception as e:
             raise RuntimeError(f"Translation failed for chunk {chunk.index}: {e}")
         
@@ -253,12 +303,7 @@ class TranslationProcessor:
                 text_to_translate = f"(Context from previous part: {chunk.overlap})\n\n{chunk.text}"
             
             prompt = PromptTemplates.TRANSLATE.format(text=text_to_translate)
-            response = self.model.invoke(prompt)
-
-            if hasattr(response, 'content'):
-                translated = response.content
-            else:
-                translated = str(response)
+            translated = self.model.generate(prompt)
             
             results.append(TranslationChunk(
                 original=chunk.text,

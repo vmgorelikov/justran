@@ -5,15 +5,8 @@
 """
 
 # версия для отладки translation.py
-# from translation import OllamaClient, TranslationProcessor, TextChunker
-# client = OllamaClient("translategemma:4b")
-
-
-# версия с поддержкой langchain translation_langchain.py 
-from model_constructor import ModelConstructor
-from translation_langchain import TranslationProcessor, TextChunker
-
-client = ModelConstructor.create_client("translategemma:4b")
+from test_translation import OllamaClient, TranslationProcessor, TextChunker
+client = OllamaClient("translategemma:4b")
 
 # Создаем чанкер с перекрытием в 1 предложение
 chunker = TextChunker(overlap_sentences=1)

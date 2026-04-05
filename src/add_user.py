@@ -12,8 +12,8 @@ from logging import fatal, info
 from argon2 import PasswordHasher
 from sqlmodel import Session
 
-from src.db import engine
-from src.db.models import User
+from db import engine
+from db.models import User
 
 logging.basicConfig(level=logging.DEBUG)
 

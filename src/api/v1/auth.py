@@ -4,11 +4,14 @@ from logging import info, warning, error
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 
-from db.models import Token
+from auth.models import Token
+from auth.models import AuthError
 
 from auth import get_token, AuthInvalidCredentialsException
 
-router = APIRouter()
+router = APIRouter(responses={
+                       401: {'model': AuthError}
+                   })
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl='/auth/token',
                                      auto_error=False)
 

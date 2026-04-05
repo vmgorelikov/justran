@@ -1,6 +1,5 @@
 from datetime import datetime, UTC
 from sqlmodel import Field, SQLModel
-from typing import Literal
 
 
 class User(SQLModel, table=True):
@@ -13,14 +12,6 @@ class User(SQLModel, table=True):
     password_hash: str
     created_at: datetime = Field(default_factory=
                                  lambda: datetime.now(UTC))
-
-class UserCredentials(SQLModel, table=False):
-    username: str
-    password: str
-
-class Token(SQLModel):
-    access_token: str
-    token_type: Literal['bearer']
 
 
 class Translation(SQLModel, table=True):

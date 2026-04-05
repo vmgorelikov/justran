@@ -4,6 +4,7 @@ from time import time
 from api.v1.auth import oauth2_scheme 
 from db.models import User
 import auth
+from auth.models import AuthError
     
 token_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -19,7 +20,10 @@ def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
     except auth.AuthInvalidTokenException as e:
         raise token_exception from e
 
-router = APIRouter(dependencies=[Depends(get_current_user)])
+router = APIRouter(dependencies=[Depends(get_current_user)],
+                   responses={
+                       401: {'model': AuthError}
+                   })
 
 @router.get('/time', status_code=200)
 async def test_method() -> dict[str, int]:

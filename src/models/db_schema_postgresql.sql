@@ -12,7 +12,7 @@ CREATE TABLE "translations" (
   "id" INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   "initiated_by" integer NOT NULL,
   "original" text NOT NULL,
-  "translated" text NOT NULL,
+  "translated" text,
   "properties" jsonb, 
   "previous" integer,
   "created_at" timestamp with time zone NOT NULL,

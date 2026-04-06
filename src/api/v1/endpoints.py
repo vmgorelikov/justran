@@ -64,8 +64,14 @@ async def translate(original: Original,
 @router.post('/translations/{id}', status_code=200)
 async def fetch_translation(id: int,
             user: User = Depends(get_current_user)):
+    
+    # Асинхронный генератор
+    async def generate():
+        async for chunk in translation_sessions[id]:
+            yield chunk.model_dump_json()
+    
     return StreamingResponse(
-                map(lambda x: x.model_dump_json(),
-                    translation_sessions[id]),
-        media_type="text/event-stream")
+        generate(),
+        media_type="text/event-stream"
+    )
 

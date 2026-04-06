@@ -35,13 +35,18 @@ translator = TranslationProcessor(
 
 assistant = LexicalAssistant(model_client=client)
 
-# Перевод
-result = translator.process_full(legal_text_contract)
-print(result.translated, '\n\n')
+async def main():
+    # Перевод - теперь с await
+    result = await translator.process_full(legal_text_contract)
+    print(result.translated, '\n\n')
+    
+    # Просмотр чанков - синхронный, без изменений
+    for chunk in result.chunks:
+        print(chunk.index, chunk, '\n\n')
 
-# Просмотр чанков
-for chunk in result.chunks:
-    print(chunk.index, chunk, '\n\n')
+# Запуск
+import asyncio
+asyncio.run(main())
 
 # Анализ слов из перевода
 # sample_word = "agreement"

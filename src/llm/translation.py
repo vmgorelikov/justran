@@ -249,7 +249,7 @@ class TranslationProcessor:
             Please mark at least one word with /start/русское слово|translation1|translation2|translation3/end/ format.]"
         return text + hint
     
-    def process_full(self, text: str) -> TranslationResult:
+    async def process_full(self, text: str) -> TranslationResult:
         """
         Выполняет полный перевод текста.
         
@@ -279,7 +279,7 @@ class TranslationProcessor:
             
             for attempt in range(self.max_retries + 1):
                 prompt = self.prompt_template.format(text=text_to_translate)
-                response = self.model.invoke(prompt)
+                response = await self.model.ainvoke(prompt)
                 raw_translated = response.content if hasattr(response, 'content') else str(response)
                 cleaned, alts = self._parse_synonyms_markers(raw_translated)
                 
@@ -314,7 +314,7 @@ class TranslationProcessor:
             global_alternatives=global_alternatives
         )
     
-    def __iter__(self) -> "TranslationProcessor":
+    def __aiter__(self) -> "TranslationProcessor":
         """
         Подготавливает процессор к итерации по чанкам.
         
@@ -325,7 +325,7 @@ class TranslationProcessor:
         self.results: list[TranslationChunk] = []
         return self
     
-    def __next__(self) -> TranslationChunk:
+    async def __anext__(self) -> TranslationChunk:
         """
         Возвращает следующий переведенный чанк.
         
@@ -333,14 +333,14 @@ class TranslationProcessor:
             TranslationChunk: Результат перевода очередного чанка
             
         Raises:
-            StopIteration: Если все чанки уже обработаны
+            StopAsyncIteration: Если все чанки уже обработаны
             RuntimeError: Если произошла ошибка при переводе чанка
         """
         if not self._chunks:
-            raise StopIteration
+            raise StopAsyncIteration
         
         if self._current_index >= len(self._chunks):
-            raise StopIteration
+            raise StopAsyncIteration
         
         chunk = self._chunks[self._current_index]
         
@@ -354,7 +354,7 @@ class TranslationProcessor:
         try:
             for attempt in range(self.max_retries + 1):
                 prompt = self.prompt_template.format(text=text_to_translate)
-                response = self.model.invoke(prompt)
+                response = await self.model.ainvoke(prompt)
                 raw_translated = response.content if hasattr(response, 'content') else str(response)
                 cleaned, alts = self._parse_synonyms_markers(raw_translated)
                 

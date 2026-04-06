@@ -12,7 +12,7 @@ from schemas.translation import Original
 from models.service_db import User, Translation
 from db import engine
 
-client = ModelConstructor.create_client("translategemma:4b")
+client = ModelConstructor.create_client("openai/gpt-oss-120b:free")
 
 chunker = TextChunker(overlap_sentences=1)
 
@@ -39,32 +39,35 @@ class TranslationSession():
         )
 
 
-    def __iter__(self) -> 'TranslationSession':
+    def __aiter__(self) -> 'TranslationSession':
         self.chunk_index = -1
         self.full_alternatives: list[Alternative] = []
         return self
 
-    def __next__(self) -> TranslationChunkSendable | None:
+    async def __anext__(self) -> TranslationChunkSendable | None:
         try:
-            chunk = next(self.translation_processor)
+            # Используем __anext__ вместо next() для асинхронного итератора
+            chunk = await self.translation_processor.__anext__()
             self.full_alternatives.extend(chunk.alternatives)
             self.chunk_index += 1
             return TranslationChunkSendable(
-                id = self.translation.id,
+                id=self.translation.id,
                 translated=chunk.translated,
                 index=self.chunk_index,
                 properties=Properties(synonyms=Synonyms(
-                    root=chunk.alternatives)
-                    )  # CORRECT
+                    root=chunk.alternatives
+                ))
             )
-        except StopIteration as e:
-            full_translated = ' '.join(chunk.translated
-                                    for chunk 
-                                    in self.translation_processor.results)
+        except StopAsyncIteration as e:
+            # Собираем все результаты из translation_processor
+            full_translated = ' '.join(
+                chunk.translated 
+                for chunk in self.translation_processor.results
+            )
             
             properties = Properties(synonyms=Synonyms(
-                root=self.full_alternatives))
-
+                root=self.full_alternatives
+            ))
             
             with Session(engine) as session:
                 statement = select(Translation)\
@@ -77,5 +80,5 @@ class TranslationSession():
                     session.add(translation)
                     session.commit()
                     session.refresh(translation)
-
-            raise StopIteration from e
+            
+            raise StopAsyncIteration from e

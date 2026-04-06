@@ -21,10 +21,14 @@ class PromptTemplates:
 
     Use ONLY the following template to mark the synonyms:
 
-    /start/русское слово|translation1|translation2|translation3/end/
+    /start/русское слово|translation1(like in text)|translation1(normal form)|translation2|translation3/end/
 
     The first option should be the most context-appropriate translation.
-    Russian word must be in its normal form.
+    Translation1(like in text) must be in the exact form it is in text.
+    Translation1(normal form) must be the normal form of translation1(like in text)
+    Russian word and all three types of translation must be in their normal form.
+
+    Tranlation and synonym block must be divided only by a new line.
 
     Text: {text}
 

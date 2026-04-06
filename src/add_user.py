@@ -13,7 +13,7 @@ from argon2 import PasswordHasher
 from sqlmodel import Session
 
 from db import engine
-from db.models import User
+from models.service_db import User
 
 logging.basicConfig(level=logging.DEBUG)
 

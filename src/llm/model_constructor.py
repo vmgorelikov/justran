@@ -8,8 +8,12 @@
 Автор: Саша Жигулина <aazhigulina@edu.hse.ru>
 """
 
+import os
+from dotenv import load_dotenv
 from langchain_ollama import ChatOllama
-
+from langchain_openai import ChatOpenAI
+ 
+load_dotenv()
 
 class ModelConstructor:
     """Фабрика для создания клиентов языковых моделей.
@@ -21,16 +25,16 @@ class ModelConstructor:
     @staticmethod
     def create_client(
         model_name: str, 
-        provider: str = "ollama", 
-        base_url: str = "http://localhost:11434",
+        provider: str = "openrouter", 
+        base_url: str = "https://openrouter.ai/api/v1",
         **kwargs
     ):
         """Создаёт клиента для указанного провайдера.
         
         Args:
             model_name: идентификатор модели у провайдера
-            provider: название провайдера (пока только 'ollama')
-            base_url: URL сервера Ollama
+            provider: название провайдера (по умолчанию "opernouter")
+            base_url: URL для доступа (по умолчанию для "opernouter")
             **kwargs: дополнительные параметры (температура, max_tokens и т.д.)
         
         Returns:
@@ -39,10 +43,17 @@ class ModelConstructor:
         Raises:
             ValueError: если указан неподдерживаемый провайдер
         """
-        if provider == "ollama":
+        if provider == "openrouter":
+            return ChatOpenAI(
+                api_key=os.getenv("OPENROUTER_API_KEY"),
+                base_url="https://openrouter.ai/api/v1",
+                model=model_name,
+                **kwargs
+            )
+        elif provider == "ollama":
             return ChatOllama(
                 model=model_name,
-                base_url=base_url,
+                base_url="http://localhost:11434",
                 **kwargs
             )
         else:

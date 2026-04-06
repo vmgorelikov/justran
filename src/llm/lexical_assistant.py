@@ -9,7 +9,7 @@
 import re
 from langchain_core.language_models.chat_models import BaseChatModel
 from typing import List, Dict, Tuple, Any
-from prompt_constructor import PromptTemplates
+from llm.prompt_constructor import PromptTemplates
 
 class LexicalAssistant:
     """Лексикографический ассистент на основе LLM"""

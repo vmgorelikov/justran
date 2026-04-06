@@ -11,16 +11,10 @@ import re
 from dataclasses import dataclass, field
 from typing import List, Dict, Tuple, Any
 from langchain_core.language_models.chat_models import BaseChatModel
-from prompt_constructor import PromptTemplates
+from llm.prompt_constructor import PromptTemplates
+from schemas.translation import Synonym
 
-@dataclass
-class Alternative:
-    'Ака синонимы.'
-    start: int
-    end: int
-    options: list[str]
-    selected: int
-    russian_original: str
+Alternative = Synonym
 
 @dataclass
 class Chunk:
@@ -37,7 +31,7 @@ class TranslationChunk:
     original: str
     translated: str
     index: int
-    alternatives: List[Dict] = field(default_factory=list)
+    alternatives: list[Alternative]
 
 
 @dataclass

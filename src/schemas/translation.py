@@ -9,11 +9,21 @@ class Original(SQLModel):
     '''
     original: str
 
+class Synonym(SQLModel):
+    start: int
+    end: int
+    options: list[str]
+    selected: int
+    russian_original: str
+
 class Synonyms(RootModel):
     '''
     Представление списка синонимов к словам и выражением в переводе.
     '''
-    root: Dict[str, set[str]]
+    root: list[Synonym]
+
+class Properties(SQLModel):
+    synonyms: Synonyms
 
 class TranslationChunk(SQLModel):
     '''
@@ -23,8 +33,7 @@ class TranslationChunk(SQLModel):
     id: int
     translated: str
     index: int
-    properties: list[Synonyms]
-    is_final: bool
+    properties: Properties
 
 class TranslationResult:
     '''

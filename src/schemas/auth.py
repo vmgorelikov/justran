@@ -15,7 +15,7 @@ class UserCredentials(SQLModel, table=False):
     :vartype username: str
     :vartype password: str
 
-    :var username: Логин до 32 символов из `[A-Za-z0-9_\-.]`.
+    :var username: Логин до 32 символов из `[A-Za-z0-9_\\-.]`.
     :var password: Пароль в явном виде.
     '''
     username: str = Field(max_length=32, regex=r'[A-Za-z0-9_\-.]+')

@@ -1,6 +1,7 @@
 from datetime import datetime, UTC
 from typing import Optional
-from sqlmodel import Field, Relationship, SQLModel
+from sqlmodel import Field, Relationship, SQLModel, Column
+from sqlalchemy.dialects.postgresql import JSONB
 
 
 class User(SQLModel, table=True):
@@ -40,7 +41,8 @@ class Translation(SQLModel, table=True):
     initiated_by: int = Field(foreign_key ='users.id')
     original: str
     translated: Optional[str]
-    properties: str | None = None
+    properties: str | None = Field(default=None,
+                                   sa_column=Column(JSONB))
     previous: int | None = Field(default=None,
                                  foreign_key='translation_patches.id')
     created_at: datetime = Field(default_factory=

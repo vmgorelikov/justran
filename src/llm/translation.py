@@ -188,7 +188,7 @@ class TranslationProcessor:
         после основного перевода и содержат русский оригинал и английские варианты.
         
         Формат блока с альтернативами:
-        /start/русский_оригинал | английский_вариант1 | английский_вариант2 | ... /end/
+        /start/русский_оригинал | английский_перевод | английский_вариант1 | английский_вариант2 | ... /end/
         
         Returns:
             (очищенный_текст_перевода, список_альтернатив)
@@ -213,8 +213,9 @@ class TranslationProcessor:
             
             pairs.append({
                 'russian_original': parts[0],
-                'english_variants': parts[1:],
-                'selected': 0
+                'english_variants': parts[2:],
+                'selected': 0,
+                'translation_to_search': parts[1]
             })
         
         # Ищем позиции вариантов в тексте перевода (с учётом регистра)
@@ -223,7 +224,7 @@ class TranslationProcessor:
         cleaned_lower = cleaned.lower()
         
         for pair in pairs:
-            target = pair['english_variants'][0]
+            target = pair['translation_to_search']
             target_lower = target.lower()
             pos = cleaned_lower.find(target_lower, current_pos)
             

@@ -16,13 +16,15 @@ class PromptTemplates:
     
     TRANSLATE_SYNONYMS = """You are a professional translator.
     Translate the following legal text from Russian to English.
-    For all legal terms and phrases that have multiple possible translations, you must mark in the same order they appear in your translation.
+    For all legal terms and phrases that have multiple possible translations: 
+    you must mark them after providing full translation, in the same order they appear in your translation.
 
     Use ONLY the following template to mark the synonyms:
 
     /start/русское слово|translation1|translation2|translation3/end/
 
     The first option should be the most context-appropriate translation.
+    Russian word must be in its normal form.
 
     Text: {text}
 

@@ -293,8 +293,8 @@ class TranslationProcessor:
             # Корректировка позиций с учётом смещения от предыдущих чанков
             current_offset = len(' '.join(r.translated for r in results)) + (1 if results else 0)
             for alt in alts:
-                alt['start'] += current_offset
-                alt['end'] += current_offset
+                alt.start += current_offset
+                alt.end += current_offset
             global_alternatives.extend(alts)
             
             results.append(TranslationChunk(

@@ -58,7 +58,7 @@ async def translate(original: Original,
     translation_session = TranslationSession(user, original)
     id = translation_session.translation.id
     translation_sessions[id] = translation_session
-    response.headers['Location'] = f'/translations/{id}'
+    response.headers['Location'] = f'/api/v1/translations/{id}'
     return {"id": id}
 
 @router.post('/translations/{id}', status_code=200)

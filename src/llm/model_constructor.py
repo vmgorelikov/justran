@@ -1,9 +1,5 @@
 """
-Модуль для создания клиента языковых моделей
-
-(Возможно, в этот модуль будет удобно добавить функцию для создания агентов
-Кажется, они создаются несколько похожим на клиентов способом
-Хотя это потребудет некоторого merging'а)
+Модуль для создания клиентов языковых моделей и агентов с инструментами.
 
 Автор: Саша Жигулина <aazhigulina@edu.hse.ru>
 """
@@ -12,6 +8,8 @@ import os
 from dotenv import load_dotenv
 from langchain_ollama import ChatOllama
 from langchain_openai import ChatOpenAI
+from langchain.agents import create_agent
+from typing import List, Optional
  
 load_dotenv()
 
@@ -58,3 +56,33 @@ class ModelConstructor:
             )
         else:
             raise ValueError(f"Unsupported provider: {provider}")
+        
+    @staticmethod
+    def create_agent(
+        model_name: str,
+        tools: List,
+        system_prompt: Optional[str] = None,
+        provider: str = "openrouter",
+        **model_kwargs
+    ):
+        """Создаёт агента с инструментами.
+        
+        Args:
+        model_name: идентификатор модели у провайдера
+        tools: список инструментов (функции с декоратором @tool)
+        system_prompt: системный промпт для агента (опционально)
+        provider: название провайдера (по умолчанию "openrouter")
+        **model_kwargs: дополнительные параметры (температура, max_tokens и т.д.)
+    
+        Returns:
+            Agent: инициализированный агент LangChain
+            
+        Raises:
+            ValueError: если указан неподдерживаемый провайдер
+        """
+        client = ModelConstructor.create_client(model_name, provider, **model_kwargs)
+        return create_agent(
+            model=client,
+            tools=tools,
+            system_prompt=system_prompt
+        )

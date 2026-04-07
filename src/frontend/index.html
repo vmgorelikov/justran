@@ -23,6 +23,7 @@
             align-items: center;
             justify-content: space-between;
             flex-shrink: 0;
+            max-height: 10vh;
         }
         h1 { font-size: 1.3rem; font-weight: 600; }
         .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
@@ -69,6 +70,7 @@
             align-items: center;
             gap: 12px;
             flex-shrink: 0;
+            max-height: 10vh;
         }
         .toolbar button {
             background: #0066ff;
@@ -85,14 +87,17 @@
             overflow: hidden;
             padding: 0 20px 20px;
             gap: 20px;
+            max-height: 90vh;
         }
         .panel {
+            min-height: 0;
             border: 1px solid var(--border);
             border-radius: 8px;
             background: #fff;
             display: flex;
             flex-direction: column;
             box-shadow: 0 2px 8px rgba(0,0,0,.06);
+            min-height: 0;
         }
         .left { flex: 1; min-width: 0; }
         .right { flex: 2; min-width: 0; }
@@ -111,12 +116,12 @@
             border: none;
             outline: none;
             resize: none;
-            overflow-y: auto;
             font-family: inherit;
             white-space: pre-wrap;
             word-break: break-word;
+            overflow-y: scroll;
         }
-        #output { white-space: pre-wrap; }
+        #output { white-space: pre-wrap; overflow-y: auto;}
         .synonym {
             text-decoration: underline;
             text-decoration-style: dashed;
@@ -203,6 +208,8 @@
             cursor: pointer;
             color: #666;
             line-height: 1;
+            font-family: "Segoe UI Symbol";
+            text-align: right;
         }
         .lookup-icon:hover { color: #0066ff; }
         #dict-bottom {
@@ -214,15 +221,22 @@
             padding: 12px;
             font-size: .95rem;
             line-height: 1.5;
+            max-height: 40vh;
+            font-family: sans, "segoe ui symbol"
         }
         #dict-bottom h4 { margin-bottom: 8px; }
         
         .error { color: #d32f2f; font-size: .9rem; margin-top: 8px; }
+
+        div#synonym-options {
+            overflow-y: auto;
+            max-height: 30vh;
+        }
     </style>
 </head>
 <body>
     <header>
-        <h1>Translate</h1>
+        <h1>JusTran</h1>
         <div id="user-info" style="display:none; align-items:center; gap:12px;">
             <span id="username-display" style="font-size:0.95rem; color:#444;"></span>
             <button onclick="logout()" style="background:#eee; color:#111; padding:6px 14px; font-size:0.9rem;">Logout</button>
@@ -282,6 +296,13 @@
         let groups = {}             // russian_original → {selected, options, serverChosen}
         let translationId = null
 
+        function handleAuthError(res) {
+            if (res && res.status === 401) {
+                document.getElementById('translate-status').textContent = 'Auth error'
+                logout()
+            }
+        }
+        
         function escapeHtml(t) {
             return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')
         }
@@ -382,7 +403,10 @@
             fetch(`${API_BASE}/api/v1/glossary/${encodeURIComponent(query)}`, {
                 headers: { 'Authorization': `Bearer ${token}` }
             })
-            .then(r => r.ok ? r.json() : Promise.reject())
+            .then(r => {
+                handleAuthError(r)
+                return r.ok ? r.json() : Promise.reject()
+            })
             .then(data => {
                 bottom.innerHTML = `<h4>Results for “${query}”</h4>`
                 if (data.terms?.length) {
@@ -419,13 +443,30 @@
 
         function closeSidebar() { document.getElementById('sidebar').classList.remove('open') }
 
+        const sync = (src, tgt) => { if(src&&tgt) tgt.scrollTop = src.scrollTop * (tgt.scrollHeight/src.scrollHeight||1) }
+        const left_field = document.getElementById('original-text')
+        const right_field = document.getElementById('output')
+        const sync_lr = () => sync(left_field,right_field)
+        const sync_rl = () => sync(right_field,left_field)
+
         function initScrollSync() {
+            const left_field = document.getElementById('original-text')
+            const right_field = document.getElementById('output')
+            left_field.addEventListener('scroll', sync_lr)
+            right_field.addEventListener('scroll', sync_rl)
+        }
+
+        function disableScrollSync() {
             const left = document.getElementById('original-text')
             const right = document.getElementById('output')
-            const sync = (src, tgt) => { if(src&&tgt) tgt.scrollTop = src.scrollTop * (tgt.scrollHeight/src.scrollHeight||1) }
-            left.addEventListener('scroll', () => sync(left,right))
-            right.addEventListener('scroll', () => sync(right,left))
+            left.removeEventListener('scroll', sync_lr)
+            right.removeEventListener('scroll', sync_rl)
         }
+
+        left_field.addEventListener('mousedown', disableScrollSync)
+        right_field.addEventListener('mousedown', disableScrollSync)
+        left_field.addEventListener('mouseup', initScrollSync)
+        right_field.addEventListener('mouseup', initScrollSync)
 
         async function startStream(id) {
             document.getElementById('translate-status').innerHTML = `Streaming <span style="color:#0066ff">●</span>`
@@ -435,6 +476,7 @@
             const res = await fetch(`${API_BASE}/api/v1/translations/${id}`, {
                 headers: { 'Accept': 'text/event-stream', 'Authorization': `Bearer ${token}` }
             })
+            handleAuthError(res)
             const reader = res.body.getReader()
             const decoder = new TextDecoder()
             let buffer = ''
@@ -485,6 +527,7 @@
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                 body: JSON.stringify({ original: text })
             })
+            handleAuthError(res)
             if (!res.ok) throw new Error('Failed')
             const {id} = await res.json()
             status.textContent = 'Streaming translation…'
@@ -519,6 +562,7 @@
             document.getElementById('user-info').style.display = 'flex'
             document.getElementById('username-display').textContent = username
             initScrollSync()
+            document.getElementById('translate-status').textContent = ''
         }
 
         function logout() {
@@ -530,6 +574,7 @@
             serverTranslated = ''
             groups = {}
             document.getElementById('output').innerHTML = ''
+            document.getElementById('translate-status').textContent = ''
         }
 
         window.onload = () => {

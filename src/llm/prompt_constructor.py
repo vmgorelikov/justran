@@ -75,14 +75,13 @@ class PromptTemplates:
     3. Then use search_glossary to look up similar terms and their definitions.
     4. Return ONLY a list of found terms in the exact format:
 
-    термин1, transaltion1, definition1, id1
-    термин2, transaltion2, definition2, id2
-    термин3, transaltion3, definition3, id3
+    original: original1, ID: id1, term: term1, definition: definition1
+    original: original2, ID: id2, term: term2, definition: definition2
+    original: original3, ID: id3, term: term3, definition: definition3
     ...
 
     Rules:
     - One term per line
-    - Use comma (,) as separator
     - No extra text, no explanations, no markdown
     - If no terms found, return empty string
     """

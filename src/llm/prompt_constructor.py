@@ -16,6 +16,12 @@ class PromptTemplates:
     
     TRANSLATE_SYNONYMS = """You are a professional translator.
     Translate the following legal text from Russian to English.
+
+    Use thesaurus to help you. If you see a word that is included in thesaurus, use provided translation as the first option.
+
+    Thesaurus: {thesaurus}
+
+
     For all legal terms and phrases that have multiple possible translations: 
     you must mark them after providing full translation, in the same order they appear in your translation.
 
@@ -59,4 +65,24 @@ class PromptTemplates:
     - [example 2]
     - [example 3]
     Notes: [notes if any]
+    """
+
+    AGENT_SYSTEM_PROMPT = """You are a legal term translator and glossary specialist.
+
+    Your task:
+    1. Identify legal terms in the user's text
+    2. For each legal term, try to translate it.
+    3. Then use search_glossary to look up similar terms and their definitions.
+    4. Return ONLY a list of found terms in the exact format:
+
+    термин1, transaltion1, definition1, id1
+    термин2, transaltion2, definition2, id2
+    термин3, transaltion3, definition3, id3
+    ...
+
+    Rules:
+    - One term per line
+    - Use comma (,) as separator
+    - No extra text, no explanations, no markdown
+    - If no terms found, return empty string
     """

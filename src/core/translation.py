@@ -36,7 +36,7 @@ class TranslationSession():
             model_client=client,
             model_agent=agent,
             chunker=chunker,
-            max_chunk_size=2000,
+            max_chunk_size=15000,
             prompt_template=PromptTemplates.TRANSLATE_SYNONYMS,
             text=original.original
         )

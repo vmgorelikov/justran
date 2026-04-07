@@ -6,6 +6,7 @@ from llm.model_constructor import ModelConstructor
 from llm.prompt_constructor import PromptTemplates
 from llm.translation import Alternative, TextChunker, TranslationProcessor, BaseChatModel
 from llm.translation import TranslationChunk as TranslationChunkLLM
+from tools.glossary_searcher import search_glossary
 from schemas.translation import Properties, Synonyms, TranslationChunk as\
                                          TranslationChunkSendable
 from schemas.translation import Original
@@ -13,6 +14,7 @@ from models.service_db import User, Translation
 from db import engine
 
 client = ModelConstructor.create_client("openai/gpt-oss-120b:free")
+agent = ModelConstructor.create_agent("openai/gpt-oss-120b:free", tools=[search_glossary])
 
 chunker = TextChunker(overlap_sentences=1)
 
@@ -32,6 +34,7 @@ class TranslationSession():
 
         self.translation_processor = TranslationProcessor(
             model_client=client,
+            model_agent=agent,
             chunker=chunker,
             max_chunk_size=2000,
             prompt_template=PromptTemplates.TRANSLATE_SYNONYMS,

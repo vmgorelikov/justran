@@ -12,6 +12,7 @@ from dataclasses import dataclass, field
 from typing import List, Dict, Tuple, Any
 from langchain_core.language_models.chat_models import BaseChatModel
 from llm.prompt_constructor import PromptTemplates
+from langchain_core.messages import HumanMessage
 from schemas.translation import Synonym
 
 Alternative = Synonym
@@ -144,13 +145,14 @@ class TranslationProcessor:
     def __init__(
         self,
         model_client: BaseChatModel,
+        model_agent, # тут я не знаю пока какой тип
         chunker: TextChunker,
         max_chunk_size: int = 2000,
         prompt_template: str = PromptTemplates.TRANSLATE_TESTING,
         max_retries: int = 2,
         min_alternatives: int = 1,
         *,
-        text: str | None
+        text: str | None,
     ):
         """
         Инициализирует процессор перевода.
@@ -159,6 +161,8 @@ class TranslationProcessor:
             model_client: Клиент для работы с языковой моделью
             chunker: Объект для разбиения текста на чанки
             max_chunk_size: Максимальный размер чанка в символах
+            term_agent_model: Отдельная модель для агента терминов (опционально)
+                            Если не указана, используется model_client
         """
         self.model = model_client
         self.chunker = chunker
@@ -170,6 +174,7 @@ class TranslationProcessor:
         self.max_retries = max_retries
         self.min_alternatives = min_alternatives
         self._next_alternative_id = 0
+        self.model_agent = model_agent
         
         if type(text) is str:
             self.chunk(text)
@@ -283,17 +288,26 @@ class TranslationProcessor:
             raise StopAsyncIteration
         
         chunk = self._chunks[self._current_index]
+
+        # вызываем агента
+        try:
+            agent_response = await self.model_agent.ainvoke({
+                "messages": [HumanMessage(content=f"Find and translate legal terms in this text: {chunk.text}")]
+            })
+            thesaurus = agent_response['messages'][-1].content
+        except Exception as e:
+            thesaurus = ""
         
         # Формируем промпт с учетом перекрытия
         text_to_translate = chunk.text
         if chunk.overlap:
             text_to_translate = f"(Context from previous part: {chunk.overlap})\n\n{chunk.text}"
         
-        prompt = self.prompt_template.format(text=text_to_translate)
+        prompt = self.prompt_template.format(thesaurus=thesaurus, text=text_to_translate)
         
         try:
             for attempt in range(self.max_retries + 1):
-                prompt = self.prompt_template.format(text=text_to_translate)
+                prompt = self.prompt_template.format(thesaurus=thesaurus, text=text_to_translate)
                 response = await self.model.ainvoke(prompt)
                 raw_translated = response.content if hasattr(response, 'content') else str(response)
                 cleaned, alts = self._parse_synonyms_markers(raw_translated)

@@ -10,6 +10,7 @@ from langchain_ollama import ChatOllama
 from langchain_openai import ChatOpenAI
 from langchain.agents import create_agent
 from typing import List, Optional
+from llm.prompt_constructor import PromptTemplates
  
 load_dotenv()
 
@@ -84,5 +85,5 @@ class ModelConstructor:
         return create_agent(
             model=client,
             tools=tools,
-            system_prompt=system_prompt
+            system_prompt=PromptTemplates.AGENT_SYSTEM_PROMPT
         )

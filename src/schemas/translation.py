@@ -3,6 +3,12 @@ from typing import Any, Dict, Literal, Optional
 from sqlmodel import Field, SQLModel
 from pydantic import RootModel
 
+class TranslationJob(SQLModel, table=False):
+    '''
+    Сведения о созданной задаче перевода.
+    '''
+    id: int
+
 class Original(SQLModel):
     '''
     Представление текста, получаемого от клиента.
@@ -10,6 +16,22 @@ class Original(SQLModel):
     original: str
 
 class Synonym(SQLModel):
+    '''
+    Набор вариантов перевода для фрагмента текста.
+
+    :var start: Начало фрагмента.
+    :var end: Конец фрагмента (не включительно).
+    :var options: Список вариантов перевода.
+    :var selected: Индекс выбранного варианта перевода в `options`.
+    :var russian_original: Фрагмент исходного текста, к которому
+    относится этот набор вариантов перевода.
+    
+    :vartype start: int
+    :vartype end: int
+    :vartype options: list[str]
+    :vartype selected: int
+    :vartype russian_original: str
+    '''
     start: int
     end: int
     options: list[str]
@@ -18,11 +40,15 @@ class Synonym(SQLModel):
 
 class Synonyms(RootModel):
     '''
-    Представление списка синонимов к словам и выражением в переводе.
+    Набор наборов вариантов перевода.
     '''
     root: list[Synonym]
 
 class Properties(SQLModel):
+    '''
+    Дополнительная информация, передаваемая с текстом перевода.
+
+    '''
     synonyms: Synonyms
 
 class TranslationChunk(SQLModel):

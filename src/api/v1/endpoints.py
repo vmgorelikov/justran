@@ -20,7 +20,7 @@ from api.v1.auth import oauth2_scheme
 from models.service_db import User
 import auth
 from schemas.auth import AuthError
-from schemas.translation import Original, TranslationChunk
+from schemas.translation import Original, TranslationChunk, TranslationJob
 from core.translation import TranslationSession
     
 token_exception = HTTPException(
@@ -42,16 +42,15 @@ router = APIRouter(dependencies=[Depends(get_current_user)],
                        401: {'model': AuthError}
                    })
 
-@router.get('/time', status_code=200)
-async def test_method() -> dict[str, int]:
-    '''
-    Возвращает текущее время на сервере.
-    '''
-    return {'time': int(time())}
-
 translation_sessions: dict[int, TranslationSession] = dict()
 
-@router.post('/translations/new', status_code=status.HTTP_201_CREATED)
+@router.post('/translations/new', status_code=status.HTTP_201_CREATED,
+             responses={
+                 201: { 'model': TranslationJob,
+                        'description': 'Создана задача для перевода '\
+                        'текста. Перевод будет возвращён при '\
+                            'GET-запросе по URL из Location.'}
+             })
 async def translate(original: Original,
                     response: Response,
                     user: User = Depends(get_current_user)):
@@ -61,10 +60,20 @@ async def translate(original: Original,
     response.headers['Location'] = f'/api/v1/translations/{id}'
     return {"id": id}
 
-@router.post('/translations/{id}', status_code=200)
+@router.get('/translations/{id}', status_code=200,
+             response_class=StreamingResponse,
+                responses={
+                    200: {"content": {"event-stream": {"schema": 
+                        TranslationChunk.model_json_schema()}
+                            },
+                    },
+                    404: {'description': 'Перевод не найден.'}
+                })
 async def fetch_translation(id: int,
-            user: User = Depends(get_current_user)):
-    
+            user: User = Depends(get_current_user))\
+                -> StreamingResponse:
+    if id not in translation_sessions:
+        raise HTTPException(404, 'Not Found')
     # Асинхронный генератор
     async def generate():
         async for chunk in translation_sessions[id]:

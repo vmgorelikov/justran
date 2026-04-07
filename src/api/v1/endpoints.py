@@ -17,9 +17,11 @@ from dataclasses import asdict
 from fastapi.responses import StreamingResponse
 
 from api.v1.auth import oauth2_scheme 
+from core.lexicography import glossary_search
 from models.service_db import User
 import auth
 from schemas.auth import AuthError
+from schemas.lexicography import Term, Terms
 from schemas.translation import Original, TranslationChunk, TranslationJob
 from core.translation import TranslationSession
     
@@ -86,3 +88,6 @@ async def fetch_translation(id: int,
         media_type='text/event-stream'
     )
 
+@router.get('/glossary/{query}', status_code=200, response_model=Terms)
+async def get_glossary_term(query: str):
+    return glossary_search(query)

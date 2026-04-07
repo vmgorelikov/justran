@@ -25,7 +25,7 @@ from core.translation import TranslationSession
     
 token_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
-        detail={"error": "invalid_token"},
+        detail={'error': 'invalid_token'},
         headers={'WWW-Authenticate': 'Bearer'},
     )
 
@@ -58,13 +58,15 @@ async def translate(original: Original,
     id = translation_session.translation.id
     translation_sessions[id] = translation_session
     response.headers['Location'] = f'/api/v1/translations/{id}'
-    return {"id": id}
+    return {'id': id}
 
 @router.get('/translations/{id}', status_code=200,
              response_class=StreamingResponse,
                 responses={
-                    200: {"content": {"event-stream": {"schema": 
-                        TranslationChunk.model_json_schema()}
+                    200: {'content': {'text/event-stream':
+                                      {'schema': {'type': 'string',
+    'description': '`text/event-stream` JSON-представлений объектов '\
+        '`TranslationChunk` в поле `data`'}}
                             },
                     },
                     404: {'description': 'Перевод не найден.'}
@@ -77,10 +79,10 @@ async def fetch_translation(id: int,
     # Асинхронный генератор
     async def generate():
         async for chunk in translation_sessions[id]:
-            yield chunk.model_dump_json()
+            yield f'data: {chunk.model_dump_json()}\n\n'
     
     return StreamingResponse(
         generate(),
-        media_type="text/event-stream"
+        media_type='text/event-stream'
     )
 

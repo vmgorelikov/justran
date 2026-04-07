@@ -21,8 +21,8 @@ app.mount("/frontend",
 
 @app.get("/", response_class=HTMLResponse)
 async def read_index():
-    with open("frontend/index.html", "r") as f:
-        return f.read()
+    with open("frontend/index.html", "r", encoding="utf8") as f:
+        return HTMLResponse(content=f.read(), media_type="text/html; charset=utf-8")
 
 app.include_router(auth_router, prefix="/auth", tags=["auth"])
 app.include_router(v1_router, prefix="/api/v1", tags=["v1"])

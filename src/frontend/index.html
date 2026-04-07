@@ -1,34 +1,563 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Translate</title>
+    <style>
+        :root { --bg: #fff; --text: #111; --border: #ddd; }
+        * { box-sizing: border-box; margin:0; padding:0; }
+        html, body { height: 100%; overflow: hidden; }
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background: #f8f9fa;
+            color: var(--text);
+            display: flex;
+            flex-direction: column;
+        }
+        header {
+            background: #fff;
+            border-bottom: 1px solid var(--border);
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+        }
+        h1 { font-size: 1.3rem; font-weight: 600; }
+        .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+        .screen { display: none; flex: 1; flex-direction: column; }
+        .screen.active { display: flex; }
+        
+        /* Login */
+        #login-screen { justify-content: center; align-items: center; background: #fff; }
+        .login-box {
+            width: 340px;
+            padding: 30px;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,.08);
+        }
+        .field { margin-bottom: 16px; }
+        label { display: block; font-size: .9rem; margin-bottom: 4px; font-weight: 500; }
+        input {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 1rem;
+        }
+        input:focus { outline: none; border-color: #0066ff; }
+        button {
+            background: #0066ff;
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-size: 1rem;
+            cursor: pointer;
+            width: 100%;
+        }
+        button:hover { background: #0052cc; }
+        
+        /* Main UI */
+        .toolbar {
+            padding: 12px 20px;
+            background: #fff;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-shrink: 0;
+        }
+        .toolbar button {
+            background: #0066ff;
+            color: #fff;
+            padding: 8px 18px;
+            border-radius: 6px;
+            font-weight: 500;
+        }
+        .status { margin-left: auto; font-size: .9rem; color: #666; }
+        
+        .content {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+            padding: 0 20px 20px;
+            gap: 20px;
+        }
+        .panel {
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            background: #fff;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 2px 8px rgba(0,0,0,.06);
+        }
+        .left { flex: 1; min-width: 0; }
+        .right { flex: 2; min-width: 0; }
+        .label {
+            padding: 10px 16px;
+            font-weight: 600;
+            border-bottom: 1px solid var(--border);
+            background: #f8f9fa;
+            border-radius: 8px 8px 0 0;
+        }
+        textarea, #output {
+            flex: 1;
+            padding: 16px;
+            font-size: 1.05rem;
+            line-height: 1.65;
+            border: none;
+            outline: none;
+            resize: none;
+            overflow-y: auto;
+            font-family: inherit;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        #output { white-space: pre-wrap; }
+        .synonym {
+            text-decoration: underline;
+            text-decoration-style: dashed;
+            text-underline-offset: 3px;
+            cursor: pointer;
+            background: rgba(0,102,255,.08);
+            border-radius: 3px;
+            padding: 1px 2px;
+        }
+        .synonym:hover { background: rgba(0,102,255,.15); }
+        
+        /* Sidebar */
+        #sidebar {
+            flex: 0 0 0;
+            transition: flex-basis .3s cubic-bezier(0.4, 0, 0.2, 1);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            border-left: 1px solid var(--border);
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,.1);
+            min-width: 0;
+        }
+        #sidebar.open { flex-basis: 360px; }
+        .sidebar-header {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-weight: 600;
+        }
+        .sidebar-header button {
+            background: none;
+            border: none;
+            font-size: 1.4rem;
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: #666;
+        }
+        .sidebar-body {
+            flex: 1;
+            overflow: auto;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .option {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 12px;
+            border: 1px solid #eee;
+            border-radius: 6px;
+            margin-bottom: 8px;
+            gap: 12px;
+        }
+        .option.selected {
+            border-color: #0066ff;
+            background: #f0f7ff;
+        }
+        .select-link {
+            cursor: pointer;
+            text-decoration: underline;
+            color: #0066ff;
+            flex: 1;
+            font-size: 1rem;
+        }
+        .option.selected .select-link {
+            font-weight: 600;
+            text-decoration: none;
+        }
+        .lookup-icon {
+            background: none;
+            border: none;
+            font-size: 1.2rem;
+            padding: 4px 8px;
+            cursor: pointer;
+            color: #666;
+            line-height: 1;
+        }
+        .lookup-icon:hover { color: #0066ff; }
+        #dict-bottom {
+            flex: 1;
+            overflow-y: auto;
+            background: #fafafa;
+            border: 1px solid #eee;
+            border-radius: 6px;
+            padding: 12px;
+            font-size: .95rem;
+            line-height: 1.5;
+        }
+        #dict-bottom h4 { margin-bottom: 8px; }
+        
+        .error { color: #d32f2f; font-size: .9rem; margin-top: 8px; }
+    </style>
+</head>
 <body>
-  <select id="method">
-    <option>POST</option>
-    <option>GET</option>
-    <option>PUT</option>
-    <option>DELETE</option>
-  </select>
-  <input id="url" type="text" value="/api/v1/"><br><br>
-  <textarea id="body" placeholder="Body (for POST/PUT)"></textarea><br>
-  <button onclick="send()">Send Request</button>
-  <pre id="out"></pre>
+    <header>
+        <h1>Translate</h1>
+        <div id="user-info" style="display:none; align-items:center; gap:12px;">
+            <span id="username-display" style="font-size:0.95rem; color:#444;"></span>
+            <button onclick="logout()" style="background:#eee; color:#111; padding:6px 14px; font-size:0.9rem;">Logout</button>
+        </div>
+    </header>
 
-  <script>
-    async function send() {
-      const method = document.getElementById('method').value;
-      const options = { method };
-      
-      if (method !== 'GET' && method !== 'HEAD') {
-        options.headers = { 'Content-Type': 'application/json' };
-        options.body = document.getElementById('body').value;
-      }
+    <div id="login-screen" class="screen active">
+        <div class="login-box">
+            <h2 style="margin-bottom:20px; text-align:center;">Sign in</h2>
+            <div class="field"><label>Username</label><input id="username" type="text" value="test"></div>
+            <div class="field"><label>Password</label><input id="password" type="password" value="test"></div>
+            <button onclick="doLogin()">Get Token</button>
+            <div id="login-error" class="error"></div>
+        </div>
+    </div>
 
-      try {
-        const res = await fetch(document.getElementById('url').value, options);
-        document.getElementById('out').innerText = await res.text();
-      } catch (err) {
-        document.getElementById('out').innerText = "Error: " + err.message;
-      }
-    }
-  </script>
+    <div id="main-screen" class="screen">
+        <div class="toolbar">
+            <button onclick="startTranslation()">Translate</button>
+            <span id="translate-status" class="status">Ready</span>
+        </div>
+        
+        <div class="content">
+            <div class="panel left">
+                <div class="label">Original text</div>
+                <textarea id="original-text" placeholder="Paste your text here..."></textarea>
+            </div>
+            
+            <div class="panel right">
+                <div class="label">Translation</div>
+                <div id="output"></div>
+            </div>
+            
+            <div id="sidebar">
+                <div class="sidebar-header">
+                    <span id="sidebar-title">Synonyms</span>
+                    <button onclick="closeSidebar()">×</button>
+                </div>
+                <div class="sidebar-body">
+                    <div id="synonym-options"></div>
+                    <div>
+                        <h4 style="margin-bottom:8px;">Dictionary</h4>
+                        <div id="dict-bottom">Click 🔍 on any option to see definitions here.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Use current host (works on any origin, including localhost, 127.0.0.1, or production)
+        const API_BASE = window.location.origin || 'http://127.0.0.1'
+        
+        let token = null
+        let usernameStored = ''
+        let serverTranslated = ''
+        let groups = {}             // russian_original → {selected, options, serverChosen}
+        let translationId = null
+
+        function escapeHtml(t) {
+            return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')
+        }
+
+        function getCurrentText() {
+            let text = serverTranslated
+            if (!text) return ''
+            
+            // Apply overrides longest-first to avoid any replacement overlap issues
+            const overrides = Object.values(groups)
+                .filter(g => g.serverChosen)
+                .map(g => ({
+                    from: g.serverChosen,
+                    to: g.options[g.selected]
+                }))
+                .sort((a, b) => b.from.length - a.from.length)
+            
+            for (const ov of overrides) {
+                if (ov.from && ov.to !== ov.from) {
+                    text = text.split(ov.from).join(ov.to)
+                }
+            }
+            return text
+        }
+
+        function renderOutput() {
+            const el = document.getElementById('output')
+            const text = getCurrentText()
+            if (!text) return el.innerHTML = ''
+            
+            // Collect ALL possible matches for currently selected phrases
+            let candidates = []
+            for (const [key, g] of Object.entries(groups)) {
+                const phrase = g.options[g.selected]
+                if (!phrase) continue
+                let idx = 0
+                while ((idx = text.indexOf(phrase, idx)) !== -1) {
+                    candidates.push({
+                        start: idx,
+                        end: idx + phrase.length,
+                        groupKey: key,
+                        length: phrase.length
+                    })
+                    idx += phrase.length
+                }
+            }
+            
+            // Sort: longest first, then leftmost
+            candidates.sort((a, b) => b.length - a.length || a.start - b.start)
+            
+            // Greedily pick non-overlapping matches (ignore smaller ones that overlap bigger ones)
+            const selectedMatches = []
+            const occupied = new Set()
+            for (const m of candidates) {
+                let overlaps = false
+                for (let i = m.start; i < m.end; i++) {
+                    if (occupied.has(i)) {
+                        overlaps = true
+                        break
+                    }
+                }
+                if (!overlaps) {
+                    selectedMatches.push(m)
+                    for (let i = m.start; i < m.end; i++) occupied.add(i)
+                }
+            }
+            
+            // Sort final matches by position for rendering
+            selectedMatches.sort((a, b) => a.start - b.start)
+            
+            let html = ''
+            let last = 0
+            for (const m of selectedMatches) {
+                if (m.start > last) html += escapeHtml(text.slice(last, m.start))
+                const phrase = text.slice(m.start, m.end)
+                html += `<span class="synonym" data-group="${escapeHtml(m.groupKey)}">${escapeHtml(phrase)}</span>`
+                last = m.end
+            }
+            html += escapeHtml(text.slice(last))
+            html = html.replace(/\*\*([^\*]+?)\*\*/g, '<strong>$1</strong>')
+            el.innerHTML = html
+        }
+
+        function selectSynonym(groupKey, newIndex) {
+            const group = groups[groupKey]
+            if (!group || group.selected === newIndex) return
+            group.selected = newIndex
+            renderOutput()
+            
+            const sidebar = document.getElementById('sidebar')
+            if (sidebar.classList.contains('open')) openSidebar(groupKey)
+        }
+
+        function lookupDictionary(query) {
+            const bottom = document.getElementById('dict-bottom')
+            bottom.innerHTML = `<p style="color:#666">Searching “${query}”…</p>`
+            
+            fetch(`${API_BASE}/api/v1/glossary/${encodeURIComponent(query)}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            })
+            .then(r => r.ok ? r.json() : Promise.reject())
+            .then(data => {
+                bottom.innerHTML = `<h4>Results for “${query}”</h4>`
+                if (data.terms?.length) {
+                    data.terms.forEach(t => {
+                        const div = document.createElement('div')
+                        div.style.marginBottom = '16px'
+                        div.innerHTML = `<strong>${t.term}</strong><p style="margin-top:4px;color:#444">${t.definition}</p>`
+                        bottom.appendChild(div)
+                    })
+                } else bottom.innerHTML += `<p style="color:#666">No definitions found.</p>`
+            })
+            .catch(() => bottom.innerHTML = `<p style="color:#d32f2f">Dictionary lookup failed.</p>`)
+        }
+
+        function openSidebar(groupKey) {
+            const group = groups[groupKey]
+            if (!group) return
+            const optionsEl = document.getElementById('synonym-options')
+            optionsEl.innerHTML = `
+                <div style="font-size:0.9rem;color:#666;margin-bottom:12px">Original: <strong>${groupKey}</strong></div>
+                <div style="margin-bottom:12px;font-weight:600">Choose translation:</div>
+            `
+            group.options.forEach((opt,i) => {
+                const isSel = i === group.selected
+                const div = document.createElement('div')
+                div.className = `option ${isSel?'selected':''}`
+                div.innerHTML = `<span class="select-link">${opt}</span><button class="lookup-icon" title="Look up">🔍</button>`
+                div.querySelector('.select-link').onclick = e => { e.preventDefault(); selectSynonym(groupKey, i) }
+                div.querySelector('.lookup-icon').onclick = e => { e.stopImmediatePropagation(); lookupDictionary(opt) }
+                optionsEl.appendChild(div)
+            })
+            document.getElementById('sidebar').classList.add('open')
+        }
+
+        function closeSidebar() { document.getElementById('sidebar').classList.remove('open') }
+
+        function initScrollSync() {
+            const left = document.getElementById('original-text')
+            const right = document.getElementById('output')
+            const sync = (src, tgt) => { if(src&&tgt) tgt.scrollTop = src.scrollTop * (tgt.scrollHeight/src.scrollHeight||1) }
+            left.addEventListener('scroll', () => sync(left,right))
+            right.addEventListener('scroll', () => sync(right,left))
+        }
+
+        async function startStream(id) {
+            document.getElementById('translate-status').innerHTML = `Streaming <span style="color:#0066ff">●</span>`
+            serverTranslated = ''
+            groups = {}
+            
+            const res = await fetch(`${API_BASE}/api/v1/translations/${id}`, {
+                headers: { 'Accept': 'text/event-stream', 'Authorization': `Bearer ${token}` }
+            })
+            const reader = res.body.getReader()
+            const decoder = new TextDecoder()
+            let buffer = ''
+            
+            while (true) {
+                const {done, value} = await reader.read()
+                if (done) break
+                buffer += decoder.decode(value, {stream:true})
+                const lines = buffer.split('\n')
+                buffer = lines.pop() || ''
+                
+                for (const line of lines) {
+                    if (!line.startsWith('data: ')) continue
+                    const data = line.slice(6).trim()
+                    if (!data) continue
+                    try {
+                        const chunk = JSON.parse(data)
+                        serverTranslated = chunk.translated || serverTranslated
+                        
+                        // Build groups only once (store original server-chosen phrase)
+                        const incoming = chunk.properties?.synonyms?.root || chunk.properties?.synonyms || []
+                        incoming.forEach(syn => {
+                            const key = syn.russian_original
+                            if (!groups[key]) {
+                                groups[key] = {
+                                    selected: syn.selected,
+                                    options: [...syn.options],
+                                    serverChosen: syn.options[syn.selected]
+                                }
+                            }
+                        })
+                        
+                        renderOutput()
+                    } catch(e) {}
+                }
+            }
+            document.getElementById('translate-status').textContent = 'Complete'
+        }
+
+        async function startTranslation() {
+            const text = document.getElementById('original-text').value.trim()
+            if (!text || !token) return
+            const status = document.getElementById('translate-status')
+            status.textContent = 'Creating job…'
+            
+            const res = await fetch(`${API_BASE}/api/v1/translations/new`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({ original: text })
+            })
+            if (!res.ok) throw new Error('Failed')
+            const {id} = await res.json()
+            status.textContent = 'Streaming translation…'
+            await startStream(id)
+        }
+
+        async function doLogin() {
+            const username = document.getElementById('username').value.trim()
+            const password = document.getElementById('password').value.trim()
+            const errorEl = document.getElementById('login-error')
+            errorEl.textContent = ''
+            
+            const form = new URLSearchParams({grant_type:'password', username, password})
+            const res = await fetch(`${API_BASE}/auth/token`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+                body: form
+            })
+            if (!res.ok) {
+                const err = await res.json().catch(()=> ({}))
+                errorEl.textContent = err.error_description || 'Unauthorized'
+                return
+            }
+            const {access_token} = await res.json()
+            token = access_token
+            usernameStored = username
+            localStorage.setItem('token', token)
+            localStorage.setItem('username', username)
+            
+            document.getElementById('login-screen').classList.remove('active')
+            document.getElementById('main-screen').classList.add('active')
+            document.getElementById('user-info').style.display = 'flex'
+            document.getElementById('username-display').textContent = username
+            initScrollSync()
+        }
+
+        function logout() {
+            localStorage.clear()
+            token = null
+            document.getElementById('main-screen').classList.remove('active')
+            document.getElementById('login-screen').classList.add('active')
+            document.getElementById('user-info').style.display = 'none'
+            serverTranslated = ''
+            groups = {}
+            document.getElementById('output').innerHTML = ''
+        }
+
+        window.onload = () => {
+            const saved = localStorage.getItem('token')
+            if (saved) {
+                token = saved
+                usernameStored = localStorage.getItem('username') || 'user'
+                document.getElementById('login-screen').classList.remove('active')
+                document.getElementById('main-screen').classList.add('active')
+                document.getElementById('user-info').style.display = 'flex'
+                document.getElementById('username-display').textContent = usernameStored
+                initScrollSync()
+            }
+            
+            document.getElementById('output').addEventListener('click', e => {
+                if (e.target.classList.contains('synonym')) {
+                    const key = e.target.dataset.group
+                    if (key) openSidebar(key)
+                }
+            })
+            
+            document.addEventListener('keydown', e => {
+                if (e.metaKey && e.key === 'Enter' && document.getElementById('main-screen').classList.contains('active')) {
+                    e.preventDefault()
+                    startTranslation()
+                }
+            })
+        }
+    </script>
 </body>
 </html>

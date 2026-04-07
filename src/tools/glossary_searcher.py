@@ -51,20 +51,11 @@ class GlossarySearcher:
                 for row in cursor.fetchall()
             ]
 
-@tool
-def search_glossary(query: str, max_results: int = 3) -> str:
-    """Searches a glossary for a word or expression and returns the closest matches with their definitions and unique IDs.
-    
-    Args:
-        query: The word or phrase to look up in the glossary (e.g., 'API' or 'Large Language Model').
-        max_results: The maximum number of fuzzy matches to return.
-    
-    Returns:
-        Formatted string with search results.
-    """
+def search_glossary_base(query: str, max_results: int = 3) -> str:
     # для отладки
     # print(f"\n>>> TOOL CALLED: search_glossary('{query}', {max_results})")
 
+    # скорее всего тут будут проблемы с путём
     db_path = os.getenv("GLOSSARY_DB_PATH", "glossary.db")
     
     try:
@@ -82,3 +73,16 @@ def search_glossary(query: str, max_results: int = 3) -> str:
         
     except Exception as e:
         return f"Error searching glossary: {str(e)}"
+    
+@tool
+def search_glossary(query: str, max_results: int = 3) -> str:
+    """Searches a glossary for a word or expression and returns the closest matches with their definitions and unique IDs.
+    
+    Args:
+        query: The word or phrase to look up in the glossary (e.g., 'API' or 'Large Language Model').
+        max_results: The maximum number of fuzzy matches to return.
+    
+    Returns:
+        Formatted string with search results.
+    """
+    return search_glossary_base(query, max_results)

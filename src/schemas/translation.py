@@ -19,18 +19,13 @@ class Synonym(SQLModel):
     '''
     Набор вариантов перевода для фрагмента текста.
 
+    :var id: ID фрагмента.
     :var start: Начало фрагмента.
     :var end: Конец фрагмента (не включительно).
     :var options: Список вариантов перевода.
     :var selected: Индекс выбранного варианта перевода в `options`.
     :var russian_original: Фрагмент исходного текста, к которому
     относится этот набор вариантов перевода.
-    
-    :vartype start: int
-    :vartype end: int
-    :vartype options: list[str]
-    :vartype selected: int
-    :vartype russian_original: str
     '''
     id: int
     start: int

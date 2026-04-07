@@ -14,7 +14,7 @@ from models.service_db import User, Translation
 from db import engine
 
 client = ModelConstructor.create_client("openai/gpt-oss-120b:free")
-agent = ModelConstructor.create_agent(client, tools=[search_glossary])
+agent = ModelConstructor.create_agent("openai/gpt-oss-120b:free", tools=[search_glossary])
 
 chunker = TextChunker(overlap_sentences=1)
 

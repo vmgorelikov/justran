@@ -169,6 +169,7 @@ class TranslationProcessor:
         self.results: List[TranslationChunk] = []
         self.max_retries = max_retries
         self.min_alternatives = min_alternatives
+        self._next_alternative_id = 0
         
         if type(text) is str:
             self.chunk(text)
@@ -232,12 +233,15 @@ class TranslationProcessor:
                 # Находим оригинальный спан с сохранением регистра
                 original_span = cleaned[pos:pos + len(target)]
                 alternatives.append(Alternative(**{
+                    "id": self._next_alternative_id,
                     "start": pos,
                     "end": pos + len(target),
                     "options": pair['english_variants'],
                     "selected": 0,
                     "russian_original": pair['russian_original']
                 }))
+                
+                self._next_alternative_id += 1
                 current_pos = pos + len(target)
         
         return cleaned, alternatives
@@ -249,72 +253,7 @@ class TranslationProcessor:
         hint = f"\n\n[Instruction: Previous attempt had no synonyms marked. \
             Please mark at least one word with /start/русское слово|translation1|translation2|translation3/end/ format.]"
         return text + hint
-    
-    async def process_full(self, text: str) -> TranslationResult:
-        """
-        Выполняет полный перевод текста.
         
-        Args:
-            text: Исходный текст для перевода
-            
-        Returns:
-            TranslationResult: Объект с полным переводом и чанками
-            
-        Raises:
-            ValueError: Если текст пустой
-            RuntimeError: Если произошла ошибка при переводе
-        """
-        if not text:
-            raise ValueError("Text cannot be empty")
-        
-        # Разбиваем на чанки
-        self._chunks = self.chunker.split(text, self.max_chunk_size)
-        
-        # Переводим все чанки
-        results = []
-        global_alternatives = []
-        for chunk in self._chunks:
-            text_to_translate = chunk.text
-            if chunk.overlap:
-                text_to_translate = f"(Context from previous part: {chunk.overlap})\n\n{chunk.text}"
-            
-            for attempt in range(self.max_retries + 1):
-                prompt = self.prompt_template.format(text=text_to_translate)
-                response = await self.model.ainvoke(prompt)
-                raw_translated = response.content if hasattr(response, 'content') else str(response)
-                cleaned, alts = self._parse_synonyms_markers(raw_translated)
-                
-                if len(alts) >= self.min_alternatives:
-                    break
-                
-                # если не последняя попытка, добавляет подсказку в следующий промпт
-                if attempt < self.max_retries:
-                    text_to_translate = self._add_retry_hint(text_to_translate, attempt)
-
-            # Корректировка позиций с учётом смещения от предыдущих чанков
-            current_offset = len(' '.join(r.translated for r in results)) + (1 if results else 0)
-            for alt in alts:
-                alt.start += current_offset
-                alt.end += current_offset
-            global_alternatives.extend(alts)
-            
-            results.append(TranslationChunk(
-                original=chunk.text,
-                translated=cleaned,
-                index=chunk.index,
-                alternatives=alts
-            ))
-        
-        # Собираем полный перевод
-        full_translation = ' '.join(r.translated for r in sorted(results, key=lambda x: x.index))
-        
-        return TranslationResult(
-            original=text,
-            translated=full_translation,
-            chunks=results,
-            global_alternatives=global_alternatives
-        )
-    
     def __aiter__(self) -> "TranslationProcessor":
         """
         Подготавливает процессор к итерации по чанкам.
@@ -380,3 +319,25 @@ class TranslationProcessor:
         self._current_index += 1
         
         return result
+    
+    async def process_full(self, text: str) -> TranslationResult:
+        """Выполняет полный перевод текста."""
+        if not text:
+            raise ValueError("Text cannot be empty")
+        
+        self.chunk(text)
+        
+        full_translation_parts = []
+        all_alternatives = []
+        
+        # используем как итератор
+        async for chunk_result in self:
+            full_translation_parts.append(chunk_result.translated)
+            all_alternatives.extend(chunk_result.alternatives)
+        
+        return TranslationResult(
+            original=text,
+            translated=' '.join(full_translation_parts),
+            chunks=self.results,
+            global_alternatives=all_alternatives
+        )

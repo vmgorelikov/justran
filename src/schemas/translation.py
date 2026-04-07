@@ -32,6 +32,7 @@ class Synonym(SQLModel):
     :vartype selected: int
     :vartype russian_original: str
     '''
+    id: int
     start: int
     end: int
     options: list[str]

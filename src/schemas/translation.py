@@ -10,6 +10,7 @@ class Original(SQLModel):
     original: str
 
 class Synonym(SQLModel):
+    id: int
     start: int
     end: int
     options: list[str]

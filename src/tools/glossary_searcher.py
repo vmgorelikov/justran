@@ -1,5 +1,6 @@
 import sqlite3
 import os
+from pathlib import Path
 from typing import List, Dict, Any
 from langchain_core.tools import tool
 import difflib
@@ -140,7 +141,8 @@ def search_glossary_base(query: str, max_results: int = 3) -> str:
     print(f"Tool called: search_glossary('{query}', {max_results})")
 
     # скорее всего тут будут проблемы с путём
-    db_path = os.getenv("GLOSSARY_DB_PATH", "glossary.db")
+    # db_path = os.getenv("GLOSSARY_DB_PATH", "glossary.db")
+    db_path = Path(__file__).parent / "data" / "glossary.db"
     
     try:
         searcher = GlossarySearcher(db_path)

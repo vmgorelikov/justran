@@ -17,7 +17,7 @@ from schemas.translation import Synonym
 
 Alternative = Synonym
 
-with open("C:/Users/user/repos/justran/data/Art.4 GDPR.txt", 'r', encoding='utf-8') as f:
+with open("../data/Art.4_GDPR.txt", 'r', encoding='utf-8') as f:
     data = f.read()
 
 @dataclass

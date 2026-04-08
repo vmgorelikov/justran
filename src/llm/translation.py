@@ -17,6 +17,9 @@ from schemas.translation import Synonym
 
 Alternative = Synonym
 
+with open("C:/Users/user/repos/justran/data/Art.4 GDPR.txt", 'r', encoding='utf-8') as f:
+    data = f.read()
+
 @dataclass
 class Chunk:
     """Чанк текста для перевода"""
@@ -145,7 +148,7 @@ class TranslationProcessor:
     def __init__(
         self,
         model_client: BaseChatModel,
-        model_agent, # тут я не знаю пока какой тип
+        # model_agent,
         chunker: TextChunker,
         max_chunk_size: int = 2000,
         prompt_template: str = PromptTemplates.TRANSLATE_TESTING,
@@ -174,7 +177,7 @@ class TranslationProcessor:
         self.max_retries = max_retries
         self.min_alternatives = min_alternatives
         self._next_alternative_id = 0
-        self.model_agent = model_agent
+        # self.model_agent = model_agent
         
         if type(text) is str:
             self.chunk(text)
@@ -290,24 +293,24 @@ class TranslationProcessor:
         chunk = self._chunks[self._current_index]
 
         # вызываем агента
-        try:
-            agent_response = await self.model_agent.ainvoke({
-                "messages": [HumanMessage(content=f"Find and translate legal terms in this text: {chunk.text}")]
-            })
-            thesaurus = agent_response['messages'][-1].content
-        except Exception as e:
-            thesaurus = ""
+        # try:
+        #     agent_response = await self.model_agent.ainvoke({
+        #         "messages": [HumanMessage(content=f"Find and translate legal terms in this text: {chunk.text}")]
+        #     })
+        #     thesaurus = agent_response['messages'][-1].content
+        # except Exception as e:
+        #     thesaurus = ""
         
         # Формируем промпт с учетом перекрытия
         text_to_translate = chunk.text
         if chunk.overlap:
             text_to_translate = f"(Context from previous part: {chunk.overlap})\n\n{chunk.text}"
         
-        prompt = self.prompt_template.format(thesaurus=thesaurus, text=text_to_translate)
+        prompt = self.prompt_template.format(glossary=data, text=text_to_translate)
         
         try:
             for attempt in range(self.max_retries + 1):
-                prompt = self.prompt_template.format(thesaurus=thesaurus, text=text_to_translate)
+                prompt = self.prompt_template.format(glossary=data, text=text_to_translate)
                 response = await self.model.ainvoke(prompt)
                 raw_translated = response.content if hasattr(response, 'content') else str(response)
                 cleaned, alts = self._parse_synonyms_markers(raw_translated)

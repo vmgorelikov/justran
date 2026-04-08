@@ -85,3 +85,57 @@ class PromptTemplates:
     - No extra text, no explanations, no markdown
     - If no terms found, return empty string
     """
+
+    DEFINITION_LOOKUP_PROMPT = """You are a legal term translator and glossary specialist.
+    
+    Your task:
+    1. Identify russian legal terms in the user's text.
+    2. For each russian legal term, formulate its meaning in english.
+    3. Find the closest definition in glossary and retireve the term in english. 
+    4. Return ONLY a list of found terms in the exact format:
+
+    original: original1, term: term1, definition: definition1
+    original: original2, term: term2, definition: definition2
+    original: original3, term: term3, definition: definition3
+    ...
+
+    Use glossary for all your answers.
+    
+    Glossary: {glossary}
+
+    Users text: {text}
+    """
+
+    ULTIMATE_PROMPT = """You are a professional translator.
+    Translate the following legal text from Russian to English, complying with all requirements.
+
+    Your task:
+    1. Identify russian legal terms in the user's text.
+    2. For each russian legal term, formulate its meaning.
+    3. Find the closest definition in glossary and retireve the term in english. 
+    4. Consistenly translate the whole text, using definitions from glossary.
+    5. For all legal terms and phrases that have multiple possible translations: 
+    you must mark them after providing full translation, in the same order they appear in your translation.
+
+    Use ONLY the following template to mark the synonyms:
+
+    /start/русское слово|translation1(like in text)|translation1(normal form)|translation2|translation3/end/
+
+    The first option should be the most context-appropriate translation.
+    Translation1(like in text) must be in the exact form it is in text.
+    Translation1(normal form) must be the normal form of translation1(like in text)
+    
+    You can provide two or more synonyms, but do not repeat the same ones.
+
+    Russian word and all three types of translation must be in their normal form.
+
+    Use glossary for all your answers. 
+
+    Tranlation and synonym block must be divided only by a new line.
+    Do not mark synonyms in the ranslation itself.
+
+    Glossary: {glossary}
+    
+    Text: {text}
+
+    Translation:"""

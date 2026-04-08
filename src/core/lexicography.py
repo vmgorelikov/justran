@@ -31,4 +31,4 @@ def glossary_search(query: str | int) -> Terms:
 
     glossary_searcher = GlossarySearcher(db_url)
     return Terms(terms=[Term(**kwargs)
-                        for kwargs in glossary_searcher.search(query)])
+                        for kwargs in glossary_searcher.search(query, 99)])
